@@ -65,3 +65,22 @@ For gas usage, add `DTE Gas Meter` under gas consumption.
 DTE data is not real time. It usually lags actual usage and this integration polls every 24 hours.
 
 Do not commit your private DTE share URL or downloaded XML export to GitHub.
+
+## External statistics importer
+
+Version `0.2.1` adds an external statistics importer for Home Assistant's Energy Dashboard.
+
+The integration still creates live cumulative sensors, but it also imports DTE interval data into Home Assistant long-term statistics using the original DTE interval timestamp. This helps delayed DTE readings appear on the correct usage day instead of the day Home Assistant fetched the data.
+
+External statistic IDs created by this integration:
+
+```text
+dte_multi_meter:electric_electric_meter_1
+dte_multi_meter:electric_electric_meter_2
+dte_multi_meter:electric_electric_total
+dte_multi_meter:gas_gas_meter
+```
+
+Use the imported/external DTE statistic in the Energy Dashboard when you want correct historical day placement. Do not add both the live cumulative sensor and the imported statistic for the same meter, or you may double-count usage.
+
+The importer is rolling-window safe: after the first backfill, it imports only DTE intervals newer than the last imported interval and stores the cumulative imported sum in Home Assistant storage.

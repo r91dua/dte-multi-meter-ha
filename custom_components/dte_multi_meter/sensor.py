@@ -90,6 +90,13 @@ class DTEMeterSensor(CoordinatorEntity[DTEMultiMeterCoordinator], SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional debugging attributes."""
         meter = self.coordinator.data.get("meters", {}).get(self.meter_id, {})
+        statistics_import = self.coordinator.data.get("statistics_import", {})
+        stored_statistics = {}
+        if self.coordinator._stored is not None:  # pylint: disable=protected-access
+            stored_statistics = (
+                self.coordinator._stored.get("statistics", {}).get(self.meter_id, {})
+            )
+
         return {
             "usage_point_id": self.meter_id,
             "service": meter.get("service"),
@@ -99,6 +106,11 @@ class DTEMeterSensor(CoordinatorEntity[DTEMultiMeterCoordinator], SensorEntity):
             "interval_count": meter.get("interval_count"),
             "history_total_from_current_dte_feed": meter.get("history_total"),
             "source_updated": meter.get("source_updated"),
+            "external_statistic_id": stored_statistics.get("statistic_id"),
+            "external_statistics_latest_end": stored_statistics.get("latest_end"),
+            "external_statistics_cumulative_sum": stored_statistics.get("cumulative_sum"),
+            "statistics_imported_rows_last_refresh": statistics_import.get("imported_rows"),
+            "statistics_import_last_error": statistics_import.get("last_error"),
         }
 
 

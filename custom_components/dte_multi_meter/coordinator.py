@@ -12,6 +12,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import DTEDataError, fetch_dte_xml, parse_dte_green_button_xml
+from .statistics_importer import async_import_dte_external_statistics
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, STORAGE_KEY_PREFIX, STORAGE_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,7 +53,28 @@ class DTEMultiMeterCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             parsed = parse_dte_green_button_xml(xml_text)
 
             stored_meters: dict[str, Any] = self._stored.setdefault("meters", {})
+            stored_statistics: dict[str, Any] = self._stored.setdefault("statistics", {})
             changed = False
+            statistics_summary = {
+                "imported_rows": 0,
+                "updated_statistic_ids": [],
+                "last_error": None,
+            }
+
+            try:
+                import_result = await async_import_dte_external_statistics(
+                    self.hass,
+                    parsed,
+                    stored_statistics,
+                )
+                statistics_summary["imported_rows"] = import_result.imported_rows
+                statistics_summary["updated_statistic_ids"] = import_result.updated_statistic_ids
+                if import_result.imported_rows:
+                    changed = True
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.exception("Failed to import DTE external statistics")
+                statistics_summary["last_error"] = str(err)
+
             meters: dict[str, dict[str, Any]] = {}
 
             for meter_id, meter in parsed.meters.items():
@@ -107,6 +129,7 @@ class DTEMultiMeterCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return {
                 "meters": meters,
                 "updated": parsed.updated,
+                "statistics_import": statistics_summary,
             }
 
         except DTEDataError as err:
